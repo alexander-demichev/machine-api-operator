@@ -83,6 +83,8 @@ const (
 
 	// Machine has a deletion timestamp
 	phaseDeleting = "Deleting"
+
+	skipWaitForDeleteTimeoutSeconds = 60 * 5
 )
 
 var DefaultActuator Actuator
@@ -342,6 +344,12 @@ func (r *ReconcileMachine) drainNode(machine *machinev1.Machine) error {
 		Out:    writer{klog.Info},
 		ErrOut: writer{klog.Error},
 		DryRun: false,
+	}
+
+	for _, condition := range node.Status.Conditions {
+		if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionUnknown {
+			drainer.SkipWaitForDeleteTimeoutSeconds = skipWaitForDeleteTimeoutSeconds
+		}
 	}
 
 	if err := drain.RunCordonOrUncordon(drainer, node, true); err != nil {
